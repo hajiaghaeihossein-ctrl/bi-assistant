@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>دستیار هوشمند BI</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --accent: #3b82f6;
+    --accent2: #6366f1;
+    --gold: #f59e0b;
+    --text: #f1f5f9;
+    --text2: #94a3b8;
+    --success: #10b981;
+    --danger: #ef4444;
+    --border: rgba(255,255,255,0.08);
+  }
+
+  body {
+    font-family: 'Vazirmatn', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* Header */
+  header {
+    width: 100%;
+    padding: 20px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    background: rgba(17,24,39,0.8);
+    backdrop-filter: blur(10px);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .badge {
+    font-size: 0.7rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+
+  /* Main */
+  main {
+    width: 100%;
+    max-width: 860px;
+    padding: 40px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* Upload Zone */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 16px;
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: var(--surface);
+    position: relative;
+    overflow: hidden;
+  }
+  .upload-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(59,130,246,0.05), rgba(99,102,241,0.05));
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent);
+  }
+  .upload-zone:hover::before, .upload-zone.drag-over::before { opacity: 1; }
+  .upload-icon { font-size: 48px; margin-bottom: 12px; }
+  .upload-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 6px; }
+  .upload-sub { font-size: 0.85rem; color: var(--text2); }
+  .upload-formats {
+    margin-top: 14px;
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .fmt-badge {
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: var(--surface2);
+    color: var(--text2);
+    border: 1px solid var(--border);
+  }
+  #fileInput { display: none; }
+
+  /* File loaded state */
+  .file-loaded {
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 20px 24px;
+    border: 1px solid var(--border);
+    display: none;
+    align-items: center;
+    gap: 16px;
+  }
+  .file-loaded.show { display: flex; }
+  .file-icon {
+    width: 48px; height: 48px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+  .file-info { flex: 1; }
+  .file-name { font-weight: 600; font-size: 0.95rem; }
+  .file-meta { font-size: 0.8rem; color: var(--text2); margin-top: 4px; }
+  .remove-btn {
+    background: none; border: 1px solid var(--border);
+    color: var(--text2); padding: 6px 14px;
+    border-radius: 8px; cursor: pointer; font-size: 0.8rem;
+    font-family: inherit; transition: all 0.2s;
+  }
+  .remove-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* Summary Card */
+  .summary-card {
+    background: var(--surface);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    display: none;
+  }
+  .summary-card.show { display: block; }
+  .summary-header {
+    padding: 16px 24px;
+    background: linear-gradient(135deg, rgba(59,130,246,0.15), rgba(99,102,241,0.1));
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .summary-body {
+    padding: 20px 24px;
+    font-size: 0.9rem;
+    line-height: 1.9;
+    color: #cbd5e1;
+    white-space: pre-wrap;
+  }
+  .thinking-dots {
+    display: inline-flex; gap: 4px; align-items: center;
+  }
+  .thinking-dots span {
+    width: 6px; height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes pulse {
+    0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+    40% { opacity: 1; transform: scale(1); }
+  }
+
+  /* Voice Section */
+  .voice-section {
+    background: var(--surface);
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    padding: 40px;
+    text-align: center;
+    display: none;
+  }
+  .voice-section.show { display: block; }
+
+  .mic-container {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 24px;
+  }
+  .mic-btn {
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 42px;
+    transition: all 0.3s;
+    position: relative;
+    z-index: 2;
+    box-shadow: 0 8px 32px rgba(59,130,246,0.3);
+  }
+  .mic-btn:hover { transform: scale(1.05); box-shadow: 0 12px 40px rgba(59,130,246,0.4); }
+  .mic-btn.recording {
+    background: linear-gradient(135deg, var(--danger), #dc2626);
+    box-shadow: 0 8px 32px rgba(239,68,68,0.4);
+    animation: mic-pulse 1.5s ease-in-out infinite;
+  }
+  .mic-btn.processing {
+    background: linear-gradient(135deg, var(--gold), #d97706);
+    box-shadow: 0 8px 32px rgba(245,158,11,0.4);
+  }
+  @keyframes mic-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+  }
+  .ripple {
+    position: absolute;
+    inset: -20px;
+    border-radius: 50%;
+    border: 2px solid var(--danger);
+    opacity: 0;
+    animation: ripple-out 1.5s ease-out infinite;
+    display: none;
+  }
+  .ripple:nth-child(2) { animation-delay: 0.5s; }
+  .recording .ripple { display: block; }
+  @keyframes ripple-out {
+    0% { transform: scale(0.8); opacity: 0.6; }
+    100% { transform: scale(1.4); opacity: 0; }
+  }
+
+  .voice-status {
+    font-size: 1rem;
+    color: var(--text2);
+    margin-bottom: 8px;
+    min-height: 28px;
+    font-weight: 500;
+  }
+  .voice-hint { font-size: 0.8rem; color: var(--text2); opacity: 0.6; }
+
+  /* Answer Card */
+  .answer-card {
+    background: var(--surface);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    display: none;
+  }
+  .answer-card.show { display: block; }
+  .answer-header {
+    padding: 14px 24px;
+    background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(5,150,105,0.1));
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .answer-header-left { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 0.9rem; }
+  .speak-again-btn {
+    background: none; border: 1px solid var(--border);
+    color: var(--text2); padding: 5px 12px;
+    border-radius: 8px; cursor: pointer; font-size: 0.78rem;
+    font-family: inherit; transition: all 0.2s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .speak-again-btn:hover { border-color: var(--success); color: var(--success); }
+  .answer-body {
+    padding: 20px 24px;
+    font-size: 0.92rem;
+    line-height: 2;
+    color: #e2e8f0;
+  }
+  .question-bubble {
+    background: rgba(59,130,246,0.12);
+    border: 1px solid rgba(59,130,246,0.2);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 0.85rem;
+    color: var(--text2);
+    margin-bottom: 16px;
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+
+  /* History */
+  .history-section { display: none; }
+  .history-section.show { display: block; }
+  .history-title {
+    font-size: 0.85rem;
+    color: var(--text2);
+    margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .history-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    font-size: 0.82rem;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .history-item:hover { border-color: var(--accent); color: var(--text); }
+  .history-q { flex: 1; }
+  .history-time { font-size: 0.75rem; opacity: 0.6; flex-shrink: 0; }
+
+  /* No support warning */
+  .no-support {
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.3);
+    border-radius: 12px;
+    padding: 16px 20px;
+    font-size: 0.85rem;
+    color: #fca5a5;
+    display: none;
+    text-align: center;
+  }
+
+  /* Speaking indicator */
+  .speaking-bar {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    margin-top: 8px;
+  }
+  .speaking-bar.show { display: flex; }
+  .bar {
+    width: 3px;
+    background: var(--success);
+    border-radius: 2px;
+    animation: bar-wave 0.8s ease-in-out infinite;
+  }
+  .bar:nth-child(1) { height: 8px; }
+  .bar:nth-child(2) { height: 16px; animation-delay: 0.1s; }
+  .bar:nth-child(3) { height: 24px; animation-delay: 0.2s; }
+  .bar:nth-child(4) { height: 16px; animation-delay: 0.3s; }
+  .bar:nth-child(5) { height: 8px; animation-delay: 0.4s; }
+  @keyframes bar-wave {
+    0%, 100% { transform: scaleY(0.5); opacity: 0.5; }
+    50% { transform: scaleY(1); opacity: 1; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">📊</div>
+    دستیار هوشمند BI
+  </div>
+  <span class="badge">MVP v1.2</span>
+</header>
+
+<main>
+  <!-- API Keys Input -->
+  <div class="summary-card show" id="apiKeyCard">
+    <div class="summary-header">🔑 تنظیم API Keys</div>
+    <div class="summary-body" style="display:flex;flex-direction:column;gap:16px;">
+      
+      <!-- Anthropic -->
+      <div>
+        <div style="font-size:0.8rem;color:#94a3b8;margin-bottom:8px;">🧠 Anthropic API Key (برای تحلیل)</div>
+        <div style="display:flex;gap:10px;">
+          <input type="password" id="apiKeyInput" placeholder="sk-ant-..." style="flex:1;background:#0a0e1a;border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px 14px;color:#f1f5f9;font-family:inherit;font-size:0.9rem;outline:none;" />
+          <button onclick="saveApiKey()" style="background:linear-gradient(135deg,#3b82f6,#6366f1);border:none;border-radius:10px;padding:10px 20px;color:white;font-family:inherit;font-size:0.9rem;font-weight:600;cursor:pointer;">ذخیره</button>
+        </div>
+        <div id="apiKeyStatus" style="font-size:0.8rem;color:#10b981;margin-top:6px;display:none;">✅ Anthropic Key ذخیره شد</div>
+      </div>
+
+      <!-- ElevenLabs -->
+      <div>
+        <div style="font-size:0.8rem;color:#94a3b8;margin-bottom:8px;">🔊 ElevenLabs API Key (برای صدای فارسی)</div>
+        <div style="display:flex;gap:10px;">
+          <input type="password" id="elevenKeyInput" placeholder="sk_..." style="flex:1;background:#0a0e1a;border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:10px 14px;color:#f1f5f9;font-family:inherit;font-size:0.9rem;outline:none;" />
+          <button onclick="saveElevenKey()" style="background:linear-gradient(135deg,#10b981,#059669);border:none;border-radius:10px;padding:10px 20px;color:white;font-family:inherit;font-size:0.9rem;font-weight:600;cursor:pointer;">ذخیره</button>
+        </div>
+        <div id="elevenKeyStatus" style="font-size:0.8rem;color:#10b981;margin-top:6px;display:none;">✅ ElevenLabs Key ذخیره شد</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Upload Zone -->
+  <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+    <div class="upload-icon">📂</div>
+    <div class="upload-title">گزارش خود را آپلود کنید</div>
+    <div class="upload-sub">فایل را اینجا بکشید یا کلیک کنید</div>
+    <div class="upload-formats">
+      <span class="fmt-badge">Excel (.xlsx)</span>
+      <span class="fmt-badge">CSV</span>
+    </div>
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+  </div>
+
+  <!-- File Loaded -->
+  <div class="file-loaded" id="fileLoaded">
+    <div class="file-icon">✅</div>
+    <div class="file-info">
+      <div class="file-name" id="fileName"></div>
+      <div class="file-meta" id="fileMeta"></div>
+    </div>
+    <button class="remove-btn" onclick="removeFile()">حذف فایل</button>
+  </div>
+
+  <!-- Summary -->
+  <div class="summary-card" id="summaryCard">
+    <div class="summary-header">
+      🧠 تحلیل خودکار گزارش
+    </div>
+    <div class="summary-body" id="summaryBody">
+      <div class="thinking-dots"><span></span><span></span><span></span></div>
+      در حال تحلیل...
+    </div>
+  </div>
+
+  <!-- No Support Warning -->
+  <div class="no-support" id="noSupport">
+    ⚠️ مرورگر شما از تشخیص صدا پشتیبانی نمی‌کند. لطفاً از Chrome یا Edge استفاده کنید.
+  </div>
+
+  <!-- Voice Section -->
+  <div class="voice-section" id="voiceSection">
+    <div class="mic-container" id="micContainer">
+      <div class="ripple"></div>
+      <div class="ripple"></div>
+      <button class="mic-btn" id="micBtn" onclick="toggleRecording()">🎤</button>
+    </div>
+    <div class="speaking-bar" id="speakingBar">
+      <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+    </div>
+    <div class="voice-status" id="voiceStatus">برای پرسیدن سوال، دکمه را نگه دارید</div>
+    <div class="voice-hint">می‌توانید به فارسی یا انگلیسی سوال بپرسید</div>
+  </div>
+
+  <!-- Answer Card -->
+  <div class="answer-card" id="answerCard">
+    <div class="answer-header">
+      <div class="answer-header-left">🔊 پاسخ دستیار</div>
+      <button class="speak-again-btn" onclick="speakAgain()">🔁 دوباره بخوان</button>
+    </div>
+    <div class="answer-body" id="answerBody"></div>
+  </div>
+
+  <!-- History -->
+  <div class="history-section" id="historySection">
+    <div class="history-title">🕐 سوالات اخیر</div>
+    <div id="historyList"></div>
+  </div>
+</main>
+
+<script>
+const ANTHROPIC_API = 'https://api.anthropic.com/v1/messages';
+
+let fileData = null;
+let fileText = '';
+let recognition = null;
+let isRecording = false;
+let lastAnswer = '';
+let isSpeaking = false;
+let conversationHistory = [];
+let qaHistory = [];
+let apiKey = '';
+let elevenKey = '';
+const ELEVEN_VOICE_ID = '21m00Tcm4TlvDq8ikWAM'; // Rachel - free tier voice
+
+function saveApiKey() {
+  const val = document.getElementById('apiKeyInput').value.trim();
+  if (!val.startsWith('sk-')) {
+    alert('API Key معتبر نیست. باید با sk- شروع شود.');
+    return;
+  }
+  apiKey = val;
+  document.getElementById('apiKeyStatus').style.display = 'block';
+  document.getElementById('apiKeyInput').value = '••••••••••••••••••••';
+}
+
+function saveElevenKey() {
+  const val = document.getElementById('elevenKeyInput').value.trim();
+  if (!val) { alert('Key خالی است'); return; }
+  elevenKey = val;
+  document.getElementById('elevenKeyStatus').style.display = 'block';
+  document.getElementById('elevenKeyInput').value = '••••••••••••••••••••';
+  if (apiKey && elevenKey) {
+    document.getElementById('apiKeyCard').style.opacity = '0.6';
+  }
+}
+
+// Check speech support
+function checkSpeechSupport() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    document.getElementById('noSupport').style.display = 'block';
+    return false;
+  }
+  return true;
+}
+
+// File handling
+document.getElementById('fileInput').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) handleFile(file);
+});
+
+const uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) handleFile(file);
+});
+
+async function handleFile(file) {
+  const validTypes = ['.xlsx', '.xls', '.csv'];
+  const ext = '.' + file.name.split('.').pop().toLowerCase();
+  if (!validTypes.includes(ext)) {
+    alert('فقط فایل‌های Excel و CSV پشتیبانی می‌شوند');
+    return;
+  }
+
+  uploadZone.style.display = 'none';
+  document.getElementById('fileLoaded').classList.add('show');
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('fileMeta').textContent = `اندازه: ${(file.size/1024).toFixed(1)} KB`;
+
+  // Parse file
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      if (ext === '.csv') {
+        fileText = e.target.result;
+      } else {
+        const data = new Uint8Array(e.target.result);
+        const wb = XLSX.read(data, { type: 'array' });
+        let text = '';
+        wb.SheetNames.forEach(name => {
+          const ws = wb.Sheets[name];
+          text += `\n=== شیت: ${name} ===\n`;
+          text += XLSX.utils.sheet_to_csv(ws);
+        });
+        fileText = text;
+      }
+      await generateSummary();
+      showVoiceSection();
+    } catch(err) {
+      alert('خطا در خواندن فایل: ' + err.message);
+    }
+  };
+  
+  if (ext === '.csv') reader.readAsText(file, 'UTF-8');
+  else reader.readAsArrayBuffer(file);
+}
+
+function removeFile() {
+  fileText = '';
+  fileData = null;
+  conversationHistory = [];
+  document.getElementById('fileLoaded').classList.remove('show');
+  document.getElementById('summaryCard').classList.remove('show');
+  document.getElementById('voiceSection').classList.remove('show');
+  document.getElementById('answerCard').classList.remove('show');
+  document.getElementById('historySection').classList.remove('show');
+  uploadZone.style.display = 'block';
+  document.getElementById('fileInput').value = '';
+}
+
+async function generateSummary() {
+  const card = document.getElementById('summaryCard');
+  card.classList.add('show');
+  document.getElementById('summaryBody').innerHTML = '<div class="thinking-dots"><span></span><span></span><span></span></div> در حال تحلیل گزارش...';
+
+  if (!apiKey) {
+    document.getElementById('summaryBody').textContent = '⚠️ لطفاً ابتدا API Key خود را وارد کنید.';
+    return;
+  }
+  try {
+    const response = await fetch(ANTHROPIC_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        system: `شما یک دستیار تحلیل کسب‌وکار هستید که به مدیرعامل گزارش می‌دهید. داده‌های گزارش زیر را تحلیل کنید و یک خلاصه مدیریتی کوتاه و مفید به فارسی بنویسید. روی نکات کلیدی، روندها، و نقاط مهم تمرکز کنید.`,
+        messages: [{ role: 'user', content: `داده‌های گزارش:\n${fileText.slice(0, 4000)}\n\nخلاصه مدیریتی بنویس:` }]
+      })
+    });
+    const data = await response.json();
+    const summary = data.content[0].text;
+    document.getElementById('summaryBody').textContent = summary;
+    conversationHistory.push({ role: 'assistant', content: `خلاصه گزارش: ${summary}` });
+  } catch(err) {
+    document.getElementById('summaryBody').textContent = 'خطا در تحلیل. لطفاً دوباره امتحان کنید.';
+  }
+}
+
+function showVoiceSection() {
+  if (!checkSpeechSupport()) return;
+  document.getElementById('voiceSection').classList.add('show');
+  setupRecognition();
+}
+
+function setupRecognition() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.lang = 'fa-IR';
+
+  recognition.onresult = async (e) => {
+    const question = e.results[0][0].transcript;
+    setStatus(`سوال: "${question}"`);
+    await getAnswer(question);
+  };
+
+  recognition.onerror = (e) => {
+    console.log('Speech error:', e.error);
+    if (e.error === 'no-speech') {
+      setStatus('صدایی شنیده نشد. دوباره امتحان کنید.');
+    } else if (e.error === 'not-allowed') {
+      setStatus('دسترسی به میکروفون رد شد.');
+    } else {
+      // Try English if Persian fails
+      recognition.lang = 'en-US';
+      setStatus('برای پرسیدن سوال، دکمه را نگه دارید');
+    }
+    stopRecording();
+  };
+
+  recognition.onend = () => {
+    if (isRecording) stopRecording();
+  };
+}
+
+function toggleRecording() {
+  if (isSpeaking) {
+    window.speechSynthesis.cancel();
+    isSpeaking = false;
+    document.getElementById('speakingBar').classList.remove('show');
+  }
+  if (!isRecording) startRecording();
+  else stopRecording();
+}
+
+function startRecording() {
+  isRecording = true;
+  const btn = document.getElementById('micBtn');
+  btn.classList.add('recording');
+  btn.textContent = '⏹';
+  document.getElementById('micContainer').classList.add('recording');
+  setStatus('🔴 در حال ضبط... سوال خود را بپرسید');
+  try { recognition.start(); } catch(e) { setupRecognition(); recognition.start(); }
+}
+
+function stopRecording() {
+  isRecording = false;
+  const btn = document.getElementById('micBtn');
+  btn.classList.remove('recording');
+  btn.classList.add('processing');
+  btn.textContent = '⌛';
+  document.getElementById('micContainer').classList.remove('recording');
+  try { recognition.stop(); } catch(e) {}
+}
+
+function resetMic() {
+  const btn = document.getElementById('micBtn');
+  btn.classList.remove('recording', 'processing');
+  btn.textContent = '🎤';
+  setStatus('برای پرسیدن سوال جدید، دکمه را فشار دهید');
+}
+
+function setStatus(msg) {
+  document.getElementById('voiceStatus').textContent = msg;
+}
+
+async function getAnswer(question) {
+  setStatus('🧠 در حال تحلیل...');
+  
+  conversationHistory.push({ role: 'user', content: question });
+
+  try {
+    const response = await fetch(ANTHROPIC_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        system: `شما یک دستیار هوشمند تحلیل کسب‌وکار هستید که به مدیرعامل پاسخ می‌دهید.
+داده‌های گزارش:
+${fileText.slice(0, 5000)}
+
+قوانین:
+- پاسخ را کوتاه، مستقیم و مفید بدهید (۲-۴ جمله)
+- از اعداد و درصدها استفاده کنید
+- به زبان فارسی پاسخ دهید
+- اگر اطلاعات در گزارش نیست، صادقانه بگویید`,
+        messages: conversationHistory
+      })
+    });
+
+    const data = await response.json();
+    const answer = data.content[0].text;
+    lastAnswer = answer;
+    
+    conversationHistory.push({ role: 'assistant', content: answer });
+    
+    // Save to history
+    qaHistory.unshift({ q: question, a: answer, time: new Date().toLocaleTimeString('fa-IR') });
+    if (qaHistory.length > 5) qaHistory.pop();
+    
+    showAnswer(question, answer);
+    speakText(answer);
+    updateHistory();
+    resetMic();
+
+  } catch(err) {
+    setStatus('خطا در دریافت پاسخ. دوباره امتحان کنید.');
+    resetMic();
+  }
+}
+
+function showAnswer(question, answer) {
+  const card = document.getElementById('answerCard');
+  card.classList.add('show');
+  document.getElementById('answerBody').innerHTML = `
+    <div class="question-bubble">❓ ${question}</div>
+    <div>${answer}</div>
+  `;
+}
+
+async function speakText(text) {
+  if (!elevenKey) {
+    // fallback to browser TTS
+    browserSpeak(text);
+    return;
+  }
+
+  try {
+    document.getElementById('speakingBar').classList.add('show');
+    setStatus('🔊 در حال آماده‌سازی صدا...');
+
+    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${ELEVEN_VOICE_ID}`, {
+      method: 'POST',
+      headers: {
+        'xi-api-key': elevenKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        text: text,
+        model_id: 'eleven_multilingual_v2',
+        voice_settings: { stability: 0.5, similarity_boost: 0.75 }
+      })
+    });
+
+    if (!response.ok) throw new Error('ElevenLabs error');
+
+    const audioBlob = await response.blob();
+    const audioUrl = URL.createObjectURL(audioBlob);
+    const audio = new Audio(audioUrl);
+
+    isSpeaking = true;
+    setStatus('🔊 در حال پخش پاسخ...');
+
+    audio.onended = () => {
+      isSpeaking = false;
+      document.getElementById('speakingBar').classList.remove('show');
+      setStatus('برای پرسیدن سوال جدید، دکمه را فشار دهید');
+      URL.revokeObjectURL(audioUrl);
+    };
+
+    audio.play();
+
+  } catch(err) {
+    console.error('ElevenLabs error:', err);
+    browserSpeak(text); // fallback
+  }
+}
+
+function browserSpeak(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'fa-IR';
+  utter.rate = 0.95;
+  utter.onstart = () => {
+    isSpeaking = true;
+    document.getElementById('speakingBar').classList.add('show');
+    setStatus('🔊 در حال پخش پاسخ...');
+  };
+  utter.onend = () => {
+    isSpeaking = false;
+    document.getElementById('speakingBar').classList.remove('show');
+    setStatus('برای پرسیدن سوال جدید، دکمه را فشار دهید');
+  };
+  window.speechSynthesis.speak(utter);
+}
+
+function speakAgain() {
+  if (lastAnswer) speakText(lastAnswer);
+}
+
+function updateHistory() {
+  const section = document.getElementById('historySection');
+  const list = document.getElementById('historyList');
+  section.classList.add('show');
+  list.innerHTML = qaHistory.map(item => `
+    <div class="history-item" onclick="speakText('${item.a.replace(/'/g, "\\'")}')">
+      <span style="font-size:16px">❓</span>
+      <span class="history-q">${item.q}</span>
+      <span class="history-time">${item.time}</span>
+    </div>
+  `).join('');
+}
+
+// Load voices on page load
+window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+</script>
+</body>
+</html>
